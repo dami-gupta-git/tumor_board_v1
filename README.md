@@ -1,19 +1,49 @@
 # TumorBoard v0
 
-An LLM-powered cancer variant actionability assessment tool with built-in validation framework.
+An LLM-powered cancer variant actionability assessment tool with a built-in validation framework.
 
 ## Overview
 
-TumorBoard combines clinical evidence from multiple genomic databases (CIViC, ClinVar, COSMIC) with large language models to assess the clinical actionability of cancer variants using the **AMP/ASCO/CAP 4-tier classification system**.
+TumorBoard combines clinical evidence from multiple genomic databases (CIViC, ClinVar, COSMIC). It then uses large language models to emulate an expert application of the **AMP/ASCO/CAP 4-tier classification system**.
 
 ### Key Features
 
 - **Evidence Aggregation**: Automatically fetches variant evidence from MyVariant.info API
-- **LLM Assessment**: Uses state-of-the-art LLMs to interpret evidence and assign actionability tiers
-- **Validation Framework**: Built-in benchmarking against gold standard datasets
+- **LLM Assessment**: Uses LLMs to interpret evidence and assign actionability tiers
+- **Validation Framework**: Benchmarks against gold standard datasets
 - **Multiple LLM Support**: Works with OpenAI, Anthropic, and other providers via litellm
 - **Async Throughout**: Fast, concurrent processing for batch assessments
-- **Rich CLI**: Beautiful command-line interface with progress indicators
+- **Rich CLI**: Command-line interface with progress indicators
+
+## Why This Tool Exists
+
+Molecular tumor boards face significant challenges:
+
+1. **Resource Intensive**: Expert panels must manually review variants and apply 
+   classification frameworks - a time-consuming process requiring coordinated expertise.
+
+2. **Coverage Gaps**: Curated databases like CIViC don't cover every variant-tumor 
+   combination, especially rare or novel variants.
+
+3. **Evidence Fragmentation**: Relevant evidence is scattered across multiple 
+   databases (CIViC, ClinVar, COSMIC), requiring manual synthesis.
+
+4. **Rapid Evolution**: New trials and approvals constantly change variant 
+   actionability.
+
+## What This Tool Explores
+
+This is a **research prototype** investigating whether LLMs can aggregate evidence 
+and approximate expert application of classification frameworks like AMP/ASCO/CAP.
+
+**Important Limitations:**
+- LLMs may hallucinate or misinterpret evidence (~17% citation error rate in 
+  similar systems)
+- Pattern matching ≠ expert clinical judgment  
+- Requires validation against gold standards (hence the built-in framework)
+
+**This tool is for research purposes only.** Clinical decisions should always 
+be made by qualified healthcare professionals.
 
 ## Installation
 
