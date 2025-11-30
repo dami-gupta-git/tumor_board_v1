@@ -1,4 +1,15 @@
-"""Validator for benchmarking LLM assessments against gold standard."""
+"""Validator for benchmarking LLM assessments against gold standard.
+
+ARCHITECTURE:
+    Gold Standard (JSON) → Validator → LLM Assessments → ValidationMetrics
+
+Runs assessments against expert datasets and computes accuracy/precision/recall/F1.
+
+Key Design:
+- Semaphore for concurrency control
+- Flexible input: list or dict-wrapped JSON
+- Per-tier confusion matrix + overall statistics
+"""
 
 import json
 import logging

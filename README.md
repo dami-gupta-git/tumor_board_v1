@@ -112,7 +112,6 @@ tumorboard batch <INPUT_FILE> [OPTIONS]
 Options:
   -o, --output PATH        Output file [default: results.json]
   -m, --model TEXT         LLM model [default: gpt-4o-mini]
-  -c, --max-concurrent N   Concurrent requests [default: 5]
 ```
 
 Input format: `[{"gene": "BRAF", "variant": "V600E", "tumor_type": "Melanoma"}, ...]`
@@ -164,7 +163,7 @@ Gold standard format: `{"entries": [{"gene": "BRAF", "variant": "V600E", "tumor_
 
 **Data Sources:** MyVariant.info aggregates CIViC, ClinVar, and COSMIC databases
 
-**Performance:** Adjust `--max-concurrent` for batch processing. GPT-4 is more accurate but expensive; gpt-4o-mini offers good balance.
+**Performance:** GPT-4 is more accurate but expensive; gpt-4o-mini offers good balance.
 
 
 ## Contributing

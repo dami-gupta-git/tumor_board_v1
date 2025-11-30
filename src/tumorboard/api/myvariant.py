@@ -1,4 +1,16 @@
-"""MyVariant.info API client for fetching variant evidence."""
+"""MyVariant.info API client for fetching variant evidence.
+
+ARCHITECTURE:
+    Gene + Variant → MyVariant.info API → Evidence (CIViC/ClinVar/COSMIC)
+
+Aggregates variant information from multiple databases for LLM assessment.
+
+Key Design:
+- Async HTTP with connection pooling (httpx.AsyncClient)
+- Retry with exponential backoff (tenacity)
+- Structured parsing to typed Evidence models
+- Context manager for session cleanup
+"""
 
 import asyncio
 from typing import Any

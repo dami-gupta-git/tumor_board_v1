@@ -1,4 +1,24 @@
-"""LLM service for variant actionability assessment."""
+"""LLM service for variant actionability assessment.
+
+ARCHITECTURE:
+-------------
+This module is the "reasoning layer" in the TumorBoard pipeline:
+
+    Evidence (from APIs) → LLMService → Structured Assessment
+
+Functions:
+1. Prompt Engineering: Formats evidence + instructions into LLM-optimized messages
+2. Model Inference: Async calls to LLM providers via litellm abstraction layer
+3. Response Parsing: Extracts structured JSON from LLM output (handles markdown wrapping)
+
+Key Design Decisions:
+---------------------
+- Uses litellm for provider-agnostic LLM access (OpenAI, Anthropic, etc.)
+- Low temperature (0.1) prioritizes determinism over creativity
+- Forces JSON schema compliance for downstream processing reliability
+- Stateless design: each assessment is independent (no conversation history)
+- Async-native for concurrent batch processing
+"""
 
 import json
 from litellm import acompletion

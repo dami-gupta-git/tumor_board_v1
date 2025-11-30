@@ -1,4 +1,15 @@
-"""Command-line interface for TumorBoard."""
+"""Command-line interface for TumorBoard.
+
+ARCHITECTURE:
+    CLI Commands → AssessmentEngine/Validator → JSON Output
+
+Three workflows: assess (single), batch (concurrent), validate (benchmarking)
+
+Key Design:
+- Typer framework for auto-help and type validation
+- asyncio.run() bridges sync CLI → async engine
+- Flexible I/O: stdout or JSON file output
+"""
 
 import asyncio
 import json
@@ -53,7 +64,6 @@ def batch(
     input_file: Path = typer.Argument(..., help="Input JSON file with variants"),
     output: Path = typer.Option("results.json", "--output", "-o", help="Output file"),
     model: str = typer.Option("gpt-4o-mini", "--model", "-m", help="LLM model"),
-    max_concurrent: int = typer.Option(5, "--max-concurrent", "-c", help="Max concurrent"),
 ) -> None:
     """Batch process multiple variants."""
 
@@ -70,7 +80,7 @@ def batch(
 
         async with AssessmentEngine(llm_model=model) as engine:
             print(f"Assessing {len(variants)} variants...")
-            assessments = await engine.batch_assess(variants, max_concurrent=max_concurrent)
+            assessments = await engine.batch_assess(variants)
 
             output_data = [assessment.model_dump(mode="json") for assessment in assessments]
             with open(output, "w") as f:
