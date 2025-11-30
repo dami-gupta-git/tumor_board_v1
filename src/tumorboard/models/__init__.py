@@ -8,10 +8,9 @@ from tumorboard.models.assessment import (
 )
 from tumorboard.models.evidence import CIViCEvidence, ClinVarEvidence, COSMICEvidence, Evidence
 from tumorboard.models.validation import GoldStandardEntry, ValidationMetrics, ValidationResult
-from tumorboard.models.variant import Variant, VariantInput
+from tumorboard.models.variant import VariantInput
 
 __all__ = [
-    "Variant",
     "VariantInput",
     "VariantAnnotations",
     "Evidence",

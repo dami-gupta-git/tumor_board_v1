@@ -41,6 +41,7 @@ def assess(
     variant: str = typer.Argument(..., help="Variant notation (e.g., V600E)"),
     tumor: Optional[str] = typer.Option(None, "--tumor", "-t", help="Tumor type"),
     model: str = typer.Option("gpt-4o-mini", "--model", "-m", help="LLM model"),
+    temperature: float = typer.Option(0.1, "--temperature", help="LLM temperature (0.0-1.0)"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output JSON file"),
 ) -> None:
     """Assess clinical actionability of a single variant."""
@@ -53,7 +54,7 @@ def assess(
         else:
             print(f"\nAssessing {gene} {variant}...")
 
-        async with AssessmentEngine(llm_model=model) as engine:
+        async with AssessmentEngine(llm_model=model, llm_temperature=temperature) as engine:
             assessment = await engine.assess_variant(variant_input)
 
             print(assessment.to_report())
@@ -72,6 +73,7 @@ def batch(
     input_file: Path = typer.Argument(..., help="Input JSON file with variants"),
     output: Path = typer.Option("results.json", "--output", "-o", help="Output file"),
     model: str = typer.Option("gpt-4o-mini", "--model", "-m", help="LLM model"),
+    temperature: float = typer.Option(0.1, "--temperature", help="LLM temperature (0.0-1.0)"),
 ) -> None:
     """Batch process multiple variants."""
 
@@ -86,7 +88,7 @@ def batch(
         variants = [VariantInput(**item) for item in data]
         print(f"\nLoaded {len(variants)} variants from {input_file}")
 
-        async with AssessmentEngine(llm_model=model) as engine:
+        async with AssessmentEngine(llm_model=model, llm_temperature=temperature) as engine:
             print(f"Assessing {len(variants)} variants...")
             assessments = await engine.batch_assess(variants)
 
@@ -114,6 +116,7 @@ def batch(
 def validate(
     gold_standard: Path = typer.Argument(..., help="Gold standard JSON file"),
     model: str = typer.Option("gpt-4o-mini", "--model", "-m", help="LLM model"),
+    temperature: float = typer.Option(0.1, "--temperature", help="LLM temperature (0.0-1.0)"),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file"),
     max_concurrent: int = typer.Option(3, "--max-concurrent", "-c", help="Max concurrent"),
 ) -> None:
@@ -124,7 +127,7 @@ def validate(
         raise typer.Exit(1)
 
     async def run_validation() -> None:
-        async with AssessmentEngine(llm_model=model) as engine:
+        async with AssessmentEngine(llm_model=model, llm_temperature=temperature) as engine:
             validator = Validator(engine)
 
             entries = validator.load_gold_standard(gold_standard)

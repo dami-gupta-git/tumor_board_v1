@@ -23,13 +23,3 @@ class VariantInput(BaseModel):
     def to_hgvs(self) -> str:
         """Convert to HGVS-like notation for API queries."""
         return f"{self.gene}:{self.variant}"
-
-
-class Variant(VariantInput):
-    """Extended variant model with additional metadata."""
-
-    chromosome: str | None = None
-    position: int | None = None
-    reference: str | None = None
-    alternate: str | None = None
-    transcript_id: str | None = None

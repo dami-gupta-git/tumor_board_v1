@@ -104,24 +104,14 @@ class MyVariantClient:
         if fields:
             params["fields"] = ",".join(fields)
 
-        try:
-            response = await client.get(f"{self.BASE_URL}/query", params=params)
-            response.raise_for_status()
-            data = response.json()
+        response = await client.get(f"{self.BASE_URL}/query", params=params)
+        response.raise_for_status()
+        data = response.json()
 
-            if "error" in data:
-                raise MyVariantAPIError(f"API error: {data['error']}")
+        if "error" in data:
+            raise MyVariantAPIError(f"API error: {data['error']}")
 
-            return data
-
-        except httpx.HTTPStatusError as e:
-            raise MyVariantAPIError(f"HTTP error: {e.response.status_code} - {e.response.text}")
-        except httpx.TimeoutException:
-            raise MyVariantAPIError(f"Request timed out after {self.timeout}s")
-        except httpx.HTTPError as e:
-            raise MyVariantAPIError(f"HTTP error: {str(e)}")
-        except Exception as e:
-            raise MyVariantAPIError(f"Unexpected error: {str(e)}")
+        return data
 
     async def get_variant(self, variant_id: str) -> dict[str, Any]:
         """Get variant by ID.
@@ -133,13 +123,9 @@ class MyVariantClient:
             Variant data
         """
         client = self._get_client()
-
-        try:
-            response = await client.get(f"{self.BASE_URL}/variant/{variant_id}")
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPError as e:
-            raise MyVariantAPIError(f"Failed to fetch variant: {str(e)}")
+        response = await client.get(f"{self.BASE_URL}/variant/{variant_id}")
+        response.raise_for_status()
+        return response.json()
 
     def _parse_civic_evidence(self, civic_data: dict[str, Any] | list[Any]) -> list[CIViCEvidence]:
         """Parse CIViC data into evidence objects.

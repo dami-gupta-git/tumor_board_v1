@@ -66,3 +66,39 @@ class TestLLMService:
 
             assert assessment.tier == ActionabilityTier.TIER_I
             assert assessment.confidence_score == 0.95
+
+    @pytest.mark.asyncio
+    async def test_llm_service_with_custom_temperature(self, sample_evidence):
+        """Test LLM service with custom temperature parameter."""
+        custom_temp = 0.5
+        service = LLMService(model="gpt-4o-mini", temperature=custom_temp)
+
+        assert service.temperature == custom_temp
+        assert service.model == "gpt-4o-mini"
+
+        response_json = {
+            "tier": "Tier I",
+            "confidence_score": 0.95,
+            "summary": "Test summary",
+            "rationale": "Test rationale",
+            "recommended_therapies": [],
+        }
+
+        with patch("tumorboard.llm.service.acompletion", new_callable=AsyncMock) as mock_call:
+            mock_response = AsyncMock()
+            mock_response.choices = [AsyncMock()]
+            mock_response.choices[0].message.content = json.dumps(response_json)
+            mock_call.return_value = mock_response
+
+            await service.assess_variant(
+                gene="BRAF",
+                variant="V600E",
+                tumor_type="Melanoma",
+                evidence=sample_evidence,
+            )
+
+            # Verify temperature was passed to acompletion
+            mock_call.assert_called_once()
+            call_kwargs = mock_call.call_args[1]
+            assert call_kwargs["temperature"] == custom_temp
+            assert call_kwargs["model"] == "gpt-4o-mini"

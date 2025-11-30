@@ -140,9 +140,10 @@ Specify a single variant, then run this command to fetch variant evidence and us
 tumorboard assess <GENE> <VARIANT> [OPTIONS]
 
 Options:
-  -t, --tumor TEXT    Tumor type (optional, e.g., "Melanoma")
-  -m, --model TEXT    LLM model [default: gpt-4o-mini]
-  -o, --output PATH   Save to JSON file
+  -t, --tumor TEXT         Tumor type (optional, e.g., "Melanoma")
+  -m, --model TEXT         LLM model [default: gpt-4o-mini]
+  --temperature FLOAT      LLM temperature (0.0-1.0) [default: 0.1]
+  -o, --output PATH        Save to JSON file
 ```
 
 Example output:
@@ -173,6 +174,7 @@ tumorboard batch <INPUT_FILE> [OPTIONS]
 Options:
   -o, --output PATH        Output file [default: results.json]
   -m, --model TEXT         LLM model [default: gpt-4o-mini]
+  --temperature FLOAT      LLM temperature (0.0-1.0) [default: 0.1]
 ```
 
 Input format: `[{"gene": "BRAF", "variant": "V600E", "tumor_type": "Melanoma"}, ...]`
@@ -189,7 +191,8 @@ Provides:
 tumorboard validate <GOLD_STANDARD_FILE> [OPTIONS]
 
 Options:
-  -m, --model TEXT         LLM model
+  -m, --model TEXT         LLM model [default: gpt-4o-mini]
+  --temperature FLOAT      LLM temperature (0.0-1.0) [default: 0.1]
   -o, --output PATH        Save detailed results
   -c, --max-concurrent N   Concurrent validations [default: 3]
 ```
