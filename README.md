@@ -1,22 +1,57 @@
 # TumorBoard v0
 An LLM-powered cancer variant actionability assessment tool with a built-in validation framework.
 
-**TL;DR**:   
+**TL;DR**:
 Molecular tumor boards manually review cancer variants to assign clinical actionability—a time-consuming process requiring expert panels. This research tool automates that workflow by fetching variant evidence from genomic databases (CIViC, ClinVar, COSMIC) and using LLMs to assign AMP/ASCO/CAP tier classifications, mimicking expert judgment. Includes a validation framework to benchmark LLM accuracy against gold-standard classifications. This is a research prototype exploring whether LLMs can approximate clinical decision-making; not for actual clinical use.
+
+## 🌐 Web Application Available!
+
+**NEW**: TumorBoard now includes a modern web interface built with Angular and Flask!
+
+- **Interactive UI**: User-friendly form for variant assessment
+- **Real-time Results**: See comprehensive annotations and LLM analysis
+- **REST API**: Flask backend with async support
+- **Modern Stack**: Angular 17 + Flask with CORS enabled
+- **🐳 Docker Ready**: One-command deployment with Docker Compose
+
+### Quick Start with Docker
+
+```bash
+# 1. Set your API key
+echo "OPENAI_API_KEY=your-key" > .env
+
+# 2. Start everything
+docker compose up -d
+
+# 3. Open in browser
+open http://localhost
+```
+
+**Access:**
+- **Frontend**: http://localhost
+- **Backend API**: http://localhost:5000
+
+👉 **[Docker Guide](DOCKER.md)** | **[Web Application Details](README_WEBAPP.md)**
 
 ## Overview
 
 TumorBoard combines clinical evidence from multiple genomic databases (CIViC, ClinVar, COSMIC). It then uses large language models to approximate expert application of the **AMP/ASCO/CAP 4-tier classification system**.
 
+Available as both:
+- **Web Application**: Angular frontend + Flask REST API
+- **Command-Line Interface**: Python CLI tool
+
 ### Key Features
 
 - **Evidence Aggregation**: Automatically fetches variant evidence from MyVariant.info API
 - **Database Identifiers**: Extracts COSMIC, dbSNP, ClinVar, NCBI Gene IDs, and HGVS notations
+- **Functional Annotations**: SnpEff effects, PolyPhen2 predictions, CADD scores, gnomAD frequencies
 - **LLM Assessment**: Uses LLMs to interpret evidence and assign actionability tiers
 - **Validation Framework**: Benchmarks against gold standard datasets
 - **Multiple LLM Support**: Works with OpenAI, Anthropic, and other providers via litellm
 - **Async Throughout**: Fast, concurrent processing for batch assessments
 - **Rich CLI**: Command-line interface with progress indicators
+- **Web Interface**: Modern Angular application with REST API backend
 
 ## Why This Tool Exists
 
@@ -46,40 +81,50 @@ be made by qualified healthcare professionals.
 
 ## Getting Started
 
-**Installation:**
+### Pick Your Interface
+
+**Option 1: Web Application (Docker - No Install Required)**
+
+Use the web interface with zero local setup:
+
 ```bash
-git clone <repository-url>
-cd tumor_board
-pip install -e .
+# 1. Set API key
+echo "OPENAI_API_KEY=your-key" > .env
+
+# 2. Start
+docker compose up -d
+
+# 3. Open http://localhost
 ```
 
-**Setup API Key** (choose one):
-LLMs are cloud-based AI services that need authentication.
+**That's it!** No pip install, no dependencies. Docker handles everything.
+
+---
+
+**Option 2: CLI Tool (Requires pip install)**
+
+Use the command-line interface for batch processing and validation:
 
 ```bash
-# OpenAI (default, uses gpt-4o-mini)
+# 1. Clone and install
+git clone <repository-url>
+cd tumor_board_v0
+pip install -e .
+
+# 2. Set API key
 export OPENAI_API_KEY="your-key-here"
 
-# Or Anthropic (use with --model claude-3-sonnet-20240229)
-export ANTHROPIC_API_KEY="your-key-here"
+# 3. Use CLI commands
+tumorboard assess BRAF V600E --tumor "Melanoma"
+tumorboard batch benchmarks/sample_batch.json
+tumorboard validate benchmarks/gold_standard.json
 ```
 
-Alternatively, you can use env.example - rename it to .env, and specify your keys there.
-
-**Basic Usage:**
-
+**Alternative Models:**
 ```bash
-# Single variant (with tumor type)
-tumorboard assess BRAF V600E --tumor "Melanoma"
-
-# Single variant (without tumor type - optional)
-tumorboard assess BRAF V600E
-
-# Batch processing
-tumorboard batch benchmarks/sample_batch.json --output results.json
-
-# Validate performance
-tumorboard validate benchmarks/gold_standard.json
+# Use Anthropic Claude
+export ANTHROPIC_API_KEY="your-key-here"
+tumorboard assess BRAF V600E --model claude-3-sonnet-20240229
 ```
 
 ## CLI Reference

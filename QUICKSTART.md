@@ -2,7 +2,75 @@
 
 This guide will get you up and running with TumorBoard in 5 minutes.
 
-## Prerequisites
+## Choose Your Interface
+
+TumorBoard is available as:
+- **🐳 Docker**: One-command deployment (easiest!)
+- **🌐 Web Application**: Modern Angular UI with Flask REST API
+- **💻 Command-Line Interface**: Python CLI tool for batch processing
+
+## 🐳 Docker Quick Start (Recommended for POC)
+
+### Prerequisites
+- Docker
+- OpenAI API key
+
+### 3-Command Setup
+
+```bash
+# 1. Set API key
+echo "OPENAI_API_KEY=your-key-here" > .env
+
+# 2. Start container
+docker compose up
+
+# 3. Open in browser (wait ~30s for build)
+open http://localhost:4200
+```
+
+Done! See [DOCKER_SIMPLE.md](DOCKER_SIMPLE.md) for simple guide or [DOCKER.md](DOCKER.md) for advanced setup.
+
+---
+
+## Web Application Quick Start (Manual)
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+ and npm
+- OpenAI API key
+
+### 5-Minute Setup
+
+1. **Setup Python environment**:
+```bash
+cd tumor_board_v0
+python -m venv venv
+source venv/bin/activate
+pip install -e .
+pip install -r backend/requirements.txt
+```
+
+2. **Configure API key**:
+```bash
+cp .env.example .env
+# Edit .env and add: OPENAI_API_KEY=your-key-here
+```
+
+3. **Start both servers** (easiest method):
+```bash
+chmod +x start-dev.sh
+./start-dev.sh
+```
+
+4. **Open in browser**: http://localhost:4200
+
+That's it! See [README_WEBAPP.md](README_WEBAPP.md) for detailed web app documentation.
+
+---
+
+## CLI Quick Start
+
+### Prerequisites
 
 - Python 3.11 or higher
 - An OpenAI API key (or Anthropic/other LLM provider)
