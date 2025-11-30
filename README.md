@@ -1,8 +1,12 @@
-# TumorBoard v0
+# TumorBoard v1
 An LLM-powered cancer variant actionability assessment tool with a built-in validation framework.
 
 **TL;DR**:
-Molecular tumor boards manually review cancer variants to assign clinical actionability—a time-consuming process requiring expert panels. This research tool automates that workflow by fetching variant evidence from genomic databases (CIViC, ClinVar, COSMIC) and using LLMs to assign AMP/ASCO/CAP tier classifications, mimicking expert judgment. Includes a validation framework to benchmark LLM accuracy against gold-standard classifications. This is a research prototype exploring whether LLMs can approximate clinical decision-making; not for actual clinical use.
+Molecular tumor boards manually review cancer variants to assign clinical actionability—a time-consuming process  
+requiring expert panels. This research tool automates that workflow by fetching variant evidence from genomic databases   
+(CIViC, ClinVar, COSMIC) and using LLMs to assign AMP/ASCO/CAP tier classifications, mimicking expert judgment.   
+Includes a validation framework to benchmark LLM accuracy against gold-standard classifications.  
+This is a research prototype exploring whether LLMs can approximate clinical decision-making; not for actual clinical use.
 
 ## 🌐 Web Application Available!
 

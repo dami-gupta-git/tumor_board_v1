@@ -71,14 +71,12 @@ class LLMService:
 
         data = json.loads(content)
 
-        # Create assessment
-        tier = ActionabilityTier(data.get("tier", "Unknown"))
-
+        # Create assessment - inherit annotations from evidence
         return ActionabilityAssessment(
             gene=gene,
             variant=variant,
             tumor_type=tumor_type,
-            tier=tier,
+            tier=ActionabilityTier(data.get("tier", "Unknown")),
             confidence_score=data.get("confidence_score", 0.5),
             summary=data.get("summary", "No summary"),
             rationale=data.get("rationale", "No rationale"),
@@ -86,22 +84,11 @@ class LLMService:
             clinical_trials_available=data.get("clinical_trials_available", False),
             recommended_therapies=data.get("recommended_therapies", []),
             references=data.get("references", []),
-            # Add identifiers from evidence
-            cosmic_id=evidence.cosmic_id,
-            ncbi_gene_id=evidence.ncbi_gene_id,
-            dbsnp_id=evidence.dbsnp_id,
-            clinvar_id=evidence.clinvar_id,
-            clinvar_clinical_significance=evidence.clinvar_clinical_significance,
-            clinvar_accession=evidence.clinvar_accession,
-            hgvs_genomic=evidence.hgvs_genomic,
-            hgvs_protein=evidence.hgvs_protein,
-            hgvs_transcript=evidence.hgvs_transcript,
-            # Add functional annotations from evidence
-            snpeff_effect=evidence.snpeff_effect,
-            polyphen2_prediction=evidence.polyphen2_prediction,
-            cadd_score=evidence.cadd_score,
-            gnomad_exome_af=evidence.gnomad_exome_af,
-            # Add transcript information from evidence
-            transcript_id=evidence.transcript_id,
-            transcript_consequence=evidence.transcript_consequence,
+            **evidence.model_dump(include={
+                'cosmic_id', 'ncbi_gene_id', 'dbsnp_id', 'clinvar_id',
+                'clinvar_clinical_significance', 'clinvar_accession',
+                'hgvs_genomic', 'hgvs_protein', 'hgvs_transcript',
+                'snpeff_effect', 'polyphen2_prediction', 'cadd_score', 'gnomad_exome_af',
+                'transcript_id', 'transcript_consequence'
+            })
         )

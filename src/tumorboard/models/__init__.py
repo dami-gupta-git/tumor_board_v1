@@ -1,5 +1,6 @@
 """Data models for TumorBoard."""
 
+from tumorboard.models.annotations import VariantAnnotations
 from tumorboard.models.assessment import (
     ActionabilityAssessment,
     ActionabilityTier,
@@ -12,6 +13,7 @@ from tumorboard.models.variant import Variant, VariantInput
 __all__ = [
     "Variant",
     "VariantInput",
+    "VariantAnnotations",
     "Evidence",
     "CIViCEvidence",
     "ClinVarEvidence",
