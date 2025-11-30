@@ -68,6 +68,28 @@ class TestEvidence:
         evidence.civic = [CIViCEvidence(evidence_type="Predictive")]
         assert evidence.has_evidence()
 
+    def test_evidence_with_identifiers(self):
+        """Test creating evidence with database identifiers."""
+        evidence = Evidence(
+            variant_id="BRAF:V600E",
+            gene="BRAF",
+            variant="V600E",
+            cosmic_id="COSM476",
+            ncbi_gene_id="673",
+            dbsnp_id="rs113488022",
+            clinvar_id="13961",
+            hgvs_genomic="NC_000007.13:g.140453136A>T",
+            hgvs_protein="NP_004324.2:p.Val600Glu",
+            hgvs_transcript="NM_004333.4:c.1799T>A",
+        )
+        assert evidence.cosmic_id == "COSM476"
+        assert evidence.ncbi_gene_id == "673"
+        assert evidence.dbsnp_id == "rs113488022"
+        assert evidence.clinvar_id == "13961"
+        assert evidence.hgvs_genomic == "NC_000007.13:g.140453136A>T"
+        assert evidence.hgvs_protein == "NP_004324.2:p.Val600Glu"
+        assert evidence.hgvs_transcript == "NM_004333.4:c.1799T>A"
+
 
 class TestActionabilityAssessment:
     """Tests for ActionabilityAssessment model."""
@@ -82,9 +104,13 @@ class TestActionabilityAssessment:
             confidence_score=0.95,
             summary="Test summary",
             rationale="Test rationale",
+            cosmic_id="COSM476",
+            ncbi_gene_id="673",
         )
         assert assessment.tier == ActionabilityTier.TIER_I
         assert assessment.confidence_score == 0.95
+        assert assessment.cosmic_id == "COSM476"
+        assert assessment.ncbi_gene_id == "673"
 
     def test_to_report(self):
         """Test simple report generation."""
@@ -102,6 +128,9 @@ class TestActionabilityAssessment:
                     evidence_level="FDA-approved",
                 )
             ],
+            cosmic_id="COSM476",
+            dbsnp_id="rs113488022",
+            hgvs_protein="NP_004324.2:p.Val600Glu",
         )
         report = assessment.to_report()
         assert "BRAF" in report
@@ -109,6 +138,9 @@ class TestActionabilityAssessment:
         assert "Melanoma" in report
         assert "Tier I" in report
         assert "Vemurafenib" in report
+        assert "COSM476" in report
+        assert "rs113488022" in report
+        assert "NP_004324.2:p.Val600Glu" in report
 
     def test_assessment_without_tumor(self):
         """Test creating an assessment without tumor type."""

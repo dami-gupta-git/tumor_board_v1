@@ -86,4 +86,12 @@ class LLMService:
             clinical_trials_available=data.get("clinical_trials_available", False),
             recommended_therapies=data.get("recommended_therapies", []),
             references=data.get("references", []),
+            # Add identifiers from evidence
+            cosmic_id=evidence.cosmic_id,
+            ncbi_gene_id=evidence.ncbi_gene_id,
+            dbsnp_id=evidence.dbsnp_id,
+            clinvar_id=evidence.clinvar_id,
+            hgvs_genomic=evidence.hgvs_genomic,
+            hgvs_protein=evidence.hgvs_protein,
+            hgvs_transcript=evidence.hgvs_transcript,
         )

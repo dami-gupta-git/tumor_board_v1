@@ -297,19 +297,37 @@ class MyVariantClient:
         Raises:
             MyVariantAPIError: If the API request fails
         """
-        query = f"{gene}:{variant}"
-
-        # Request specific fields from CIViC, ClinVar, and COSMIC
+        # Request specific fields from CIViC, ClinVar, COSMIC, and identifiers
         fields = [
             "civic",
             "clinvar",
             "cosmic",
             "dbsnp",
             "cadd",
+            "entrezgene",  # NCBI Gene ID
+            "cosmic.cosmic_id",  # COSMIC mutation ID
+            "clinvar.variant_id",  # ClinVar variation ID
+            "dbsnp.rsid",  # dbSNP rs number
+            "hgvs",  # HGVS notations (genomic, protein, transcript)
         ]
 
         try:
+            # Try multiple query strategies to find the variant
+            # Strategy 1: Gene with protein notation (e.g., "BRAF p.V600E")
+            # This works best with MyVariant API
+            protein_notation = f"p.{variant}" if not variant.startswith("p.") else variant
+            query = f"{gene} {protein_notation}"
             result = await self._query(query, fields=fields)
+
+            # Strategy 2: If no hits, try simple gene:variant (e.g., "BRAF:V600E")
+            if result.get("total", 0) == 0:
+                query = f"{gene}:{variant}"
+                result = await self._query(query, fields=fields)
+
+            # Strategy 3: If still no hits, try searching by gene name and variant without prefix
+            if result.get("total", 0) == 0:
+                query = f"{gene} {variant}"
+                result = await self._query(query, fields=fields)
 
             # Extract hits (MyVariant returns a list of hits)
             hits = result.get("hits", [])
@@ -320,6 +338,13 @@ class MyVariantClient:
                     variant_id=query,
                     gene=gene,
                     variant=variant,
+                    cosmic_id=None,
+                    ncbi_gene_id=None,
+                    dbsnp_id=None,
+                    clinvar_id=None,
+                    hgvs_genomic=None,
+                    hgvs_protein=None,
+                    hgvs_transcript=None,
                     raw_data=result,
                 )
 
@@ -339,10 +364,91 @@ class MyVariantClient:
             if "cosmic" in hit_data:
                 cosmic_evidence = self._parse_cosmic_evidence(hit_data["cosmic"])
 
+            # Extract database identifiers
+            cosmic_id = None
+            if "cosmic" in hit_data:
+                cosmic_data = hit_data["cosmic"]
+                if isinstance(cosmic_data, dict):
+                    cosmic_id = cosmic_data.get("cosmic_id")
+                elif isinstance(cosmic_data, list) and cosmic_data:
+                    cosmic_id = cosmic_data[0].get("cosmic_id") if isinstance(cosmic_data[0], dict) else None
+
+            ncbi_gene_id = None
+            # Try multiple places for gene ID
+            if "entrezgene" in hit_data:
+                ncbi_gene_id = str(hit_data["entrezgene"])
+            elif "dbsnp" in hit_data and isinstance(hit_data["dbsnp"], dict):
+                gene_info = hit_data["dbsnp"].get("gene")
+                if isinstance(gene_info, dict) and "geneid" in gene_info:
+                    ncbi_gene_id = str(gene_info["geneid"])
+
+            dbsnp_id = None
+            if "dbsnp" in hit_data:
+                dbsnp_data = hit_data["dbsnp"]
+                if isinstance(dbsnp_data, dict):
+                    rsid = dbsnp_data.get("rsid")
+                    if rsid:
+                        dbsnp_id = f"rs{rsid}" if not str(rsid).startswith("rs") else str(rsid)
+
+            clinvar_id = None
+            if "clinvar" in hit_data:
+                clinvar_data = hit_data["clinvar"]
+                if isinstance(clinvar_data, dict):
+                    clinvar_id = str(clinvar_data.get("variant_id")) if "variant_id" in clinvar_data else None
+                elif isinstance(clinvar_data, list) and clinvar_data:
+                    if isinstance(clinvar_data[0], dict) and "variant_id" in clinvar_data[0]:
+                        clinvar_id = str(clinvar_data[0]["variant_id"])
+
+            # Extract HGVS notations
+            hgvs_genomic = None
+            hgvs_protein = None
+            hgvs_transcript = None
+
+            # The variant _id is often in HGVS genomic format (e.g., "chr7:g.140453136A>T")
+            variant_id = hit_data.get("_id", query)
+            if variant_id and (variant_id.startswith("chr") or variant_id.startswith("NC_")):
+                hgvs_genomic = variant_id
+
+            if "hgvs" in hit_data:
+                hgvs_data = hit_data["hgvs"]
+                if isinstance(hgvs_data, str):
+                    # Single HGVS notation
+                    if hgvs_data.startswith("chr") or hgvs_data.startswith("NC_"):
+                        hgvs_genomic = hgvs_data
+                    elif ":p." in hgvs_data:
+                        hgvs_protein = hgvs_data
+                    elif ":c." in hgvs_data:
+                        hgvs_transcript = hgvs_data
+                elif isinstance(hgvs_data, list):
+                    # Multiple HGVS notations
+                    for hgvs in hgvs_data:
+                        if isinstance(hgvs, str):
+                            if (hgvs.startswith("chr") or hgvs.startswith("NC_")) and not hgvs_genomic:
+                                hgvs_genomic = hgvs
+                            elif ":p." in hgvs and not hgvs_protein:
+                                hgvs_protein = hgvs
+                            elif ":c." in hgvs and not hgvs_transcript:
+                                hgvs_transcript = hgvs
+
+            # Try to extract protein notation from CIViC or other sources
+            if not hgvs_protein and "civic" in hit_data:
+                civic_data = hit_data["civic"]
+                if isinstance(civic_data, dict) and "name" in civic_data:
+                    name = civic_data["name"]
+                    if ":p." in name:
+                        hgvs_protein = name
+
             return Evidence(
                 variant_id=hit_data.get("_id", query),
                 gene=gene,
                 variant=variant,
+                cosmic_id=cosmic_id,
+                ncbi_gene_id=ncbi_gene_id,
+                dbsnp_id=dbsnp_id,
+                clinvar_id=clinvar_id,
+                hgvs_genomic=hgvs_genomic,
+                hgvs_protein=hgvs_protein,
+                hgvs_transcript=hgvs_transcript,
                 civic=civic_evidence,
                 clinvar=clinvar_evidence,
                 cosmic=cosmic_evidence,

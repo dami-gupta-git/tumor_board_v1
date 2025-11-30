@@ -55,12 +55,48 @@ class ActionabilityAssessment(BaseModel):
         default_factory=list, description="Key references supporting the assessment"
     )
 
+    # Database identifiers
+    cosmic_id: str | None = Field(None, description="COSMIC mutation ID")
+    ncbi_gene_id: str | None = Field(None, description="NCBI Entrez Gene ID")
+    dbsnp_id: str | None = Field(None, description="dbSNP rs number")
+    clinvar_id: str | None = Field(None, description="ClinVar variation ID")
+    hgvs_genomic: str | None = Field(None, description="HGVS genomic notation")
+    hgvs_protein: str | None = Field(None, description="HGVS protein notation")
+    hgvs_transcript: str | None = Field(None, description="HGVS transcript notation")
+
     def to_report(self) -> str:
         """Simple report output."""
         tumor_display = self.tumor_type if self.tumor_type else "Not specified"
         report = f"\nVariant: {self.gene} {self.variant} | Tumor: {tumor_display}\n"
-        report += f"Tier: {self.tier.value} | Confidence: {self.confidence_score:.1%}\n\n"
-        report += f"{self.summary}\n"
+        report += f"Tier: {self.tier.value} | Confidence: {self.confidence_score:.1%}\n"
+
+        # Add identifiers if available
+        identifiers = []
+        if self.cosmic_id:
+            identifiers.append(f"COSMIC: {self.cosmic_id}")
+        if self.ncbi_gene_id:
+            identifiers.append(f"NCBI Gene: {self.ncbi_gene_id}")
+        if self.dbsnp_id:
+            identifiers.append(f"dbSNP: {self.dbsnp_id}")
+        if self.clinvar_id:
+            identifiers.append(f"ClinVar: {self.clinvar_id}")
+
+        if identifiers:
+            report += f"Identifiers: {' | '.join(identifiers)}\n"
+
+        # Add HGVS notations if available
+        hgvs_notations = []
+        if self.hgvs_protein:
+            hgvs_notations.append(f"Protein: {self.hgvs_protein}")
+        if self.hgvs_transcript:
+            hgvs_notations.append(f"Transcript: {self.hgvs_transcript}")
+        if self.hgvs_genomic:
+            hgvs_notations.append(f"Genomic: {self.hgvs_genomic}")
+
+        if hgvs_notations:
+            report += f"HGVS: {' | '.join(hgvs_notations)}\n"
+
+        report += f"\n{self.summary}\n"
 
         if self.recommended_therapies:
             report += f"\nTherapies: {', '.join([t.drug_name for t in self.recommended_therapies])}\n"

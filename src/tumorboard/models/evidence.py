@@ -47,6 +47,17 @@ class Evidence(BaseModel):
     variant_id: str
     gene: str
     variant: str
+
+    # Database identifiers
+    cosmic_id: str | None = Field(None, description="COSMIC mutation ID")
+    ncbi_gene_id: str | None = Field(None, description="NCBI Entrez Gene ID")
+    dbsnp_id: str | None = Field(None, description="dbSNP rs number")
+    clinvar_id: str | None = Field(None, description="ClinVar variation ID")
+    hgvs_genomic: str | None = Field(None, description="HGVS genomic notation")
+    hgvs_protein: str | None = Field(None, description="HGVS protein notation")
+    hgvs_transcript: str | None = Field(None, description="HGVS transcript notation")
+
+    # Evidence from databases
     civic: list[CIViCEvidence] = Field(default_factory=list)
     clinvar: list[ClinVarEvidence] = Field(default_factory=list)
     cosmic: list[COSMICEvidence] = Field(default_factory=list)
