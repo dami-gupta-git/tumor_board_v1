@@ -1,10 +1,20 @@
 """Variant data models."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class VariantInput(BaseModel):
     """Input for variant assessment."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "gene": "BRAF",
+                "variant": "V600E",
+                "tumor_type": "Melanoma",
+            }
+        }
+    )
 
     gene: str = Field(..., description="Gene symbol (e.g., BRAF)")
     variant: str = Field(..., description="Variant notation (e.g., V600E)")
@@ -13,15 +23,6 @@ class VariantInput(BaseModel):
     def to_hgvs(self) -> str:
         """Convert to HGVS-like notation for API queries."""
         return f"{self.gene}:{self.variant}"
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "gene": "BRAF",
-                "variant": "V600E",
-                "tumor_type": "Melanoma",
-            }
-        }
 
 
 class Variant(VariantInput):

@@ -23,6 +23,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from tumorboard.api.myvariant_models import MyVariantHit, MyVariantResponse
 from tumorboard.models.evidence import (
     CIViCEvidence,
     ClinVarEvidence,
@@ -284,6 +285,160 @@ class MyVariantClient:
 
         return evidence_list
 
+    def _extract_from_hit(self, hit: MyVariantHit, gene: str, variant: str) -> Evidence:
+        """Extract Evidence fields from a parsed MyVariantHit using Pydantic models.
+
+        This method uses Pydantic's automatic parsing instead of manual nested
+        dictionary navigation, making it cleaner and more maintainable.
+
+        Args:
+            hit: Parsed MyVariant API hit
+            gene: Gene symbol
+            variant: Variant notation
+
+        Returns:
+            Evidence object with all extracted fields
+        """
+        # Extract database identifiers using Pydantic models
+        cosmic_id = None
+        if hit.cosmic:
+            cosmic_data = hit.cosmic if isinstance(hit.cosmic, list) else [hit.cosmic]
+            if cosmic_data and cosmic_data[0].cosmic_id:
+                cosmic_id = cosmic_data[0].cosmic_id
+
+        ncbi_gene_id = None
+        if hit.entrezgene:
+            ncbi_gene_id = str(hit.entrezgene)
+        elif hit.dbsnp and hit.dbsnp.gene and hit.dbsnp.gene.geneid:
+            ncbi_gene_id = str(hit.dbsnp.gene.geneid)
+
+        dbsnp_id = None
+        if hit.dbsnp and hit.dbsnp.rsid:
+            rsid = hit.dbsnp.rsid
+            dbsnp_id = f"rs{rsid}" if not rsid.startswith("rs") else rsid
+
+        # Extract ClinVar data
+        clinvar_id = None
+        clinvar_clinical_significance = None
+        clinvar_accession = None
+        if hit.clinvar:
+            clinvar_list = hit.clinvar if isinstance(hit.clinvar, list) else [hit.clinvar]
+            if clinvar_list:
+                first_clinvar = clinvar_list[0]
+                if first_clinvar.variant_id:
+                    clinvar_id = str(first_clinvar.variant_id)
+                # Extract from rcv array
+                if first_clinvar.rcv and len(first_clinvar.rcv) > 0:
+                    first_rcv = first_clinvar.rcv[0]
+                    if first_rcv.clinical_significance:
+                        clinvar_clinical_significance = first_rcv.clinical_significance
+                    if first_rcv.accession:
+                        clinvar_accession = first_rcv.accession
+
+        # Extract HGVS notations
+        hgvs_genomic = None
+        hgvs_protein = None
+        hgvs_transcript = None
+
+        # Use variant id as genomic HGVS if it looks like HGVS
+        if hit.id and (hit.id.startswith("chr") or hit.id.startswith("NC_")):
+            hgvs_genomic = hit.id
+
+        if hit.hgvs:
+            hgvs_list = [hit.hgvs] if isinstance(hit.hgvs, str) else hit.hgvs
+            for hgvs in hgvs_list:
+                if hgvs.startswith("chr") or hgvs.startswith("NC_"):
+                    hgvs_genomic = hgvs
+                elif ":p." in hgvs and not hgvs_protein:
+                    hgvs_protein = hgvs
+                elif ":c." in hgvs and not hgvs_transcript:
+                    hgvs_transcript = hgvs
+
+        # Extract functional annotations using Pydantic models
+        snpeff_effect = None
+        transcript_id = None
+        transcript_consequence = None
+        if hit.snpeff and hit.snpeff.ann:
+            ann = hit.snpeff.ann
+            ann_data = ann if isinstance(ann, list) else [ann]
+            if ann_data:
+                first_ann = ann_data[0]
+                snpeff_effect = first_ann.effect
+                transcript_id = first_ann.feature_id
+                transcript_consequence = first_ann.effect
+
+        polyphen2_prediction = None
+        if hit.dbnsfp and hit.dbnsfp.polyphen2 and hit.dbnsfp.polyphen2.hdiv:
+            polyphen2_prediction = hit.dbnsfp.polyphen2.hdiv.pred
+
+        cadd_score = None
+        # Try dbnsfp first, then top-level cadd
+        if hit.dbnsfp and hit.dbnsfp.cadd and hit.dbnsfp.cadd.phred:
+            try:
+                cadd_score = float(hit.dbnsfp.cadd.phred)
+            except (ValueError, TypeError):
+                pass
+        if cadd_score is None and hit.cadd and hit.cadd.phred:
+            try:
+                cadd_score = float(hit.cadd.phred)
+            except (ValueError, TypeError):
+                pass
+
+        gnomad_exome_af = None
+        if hit.gnomad_exome and hit.gnomad_exome.af and hit.gnomad_exome.af.af:
+            try:
+                gnomad_exome_af = float(hit.gnomad_exome.af.af)
+            except (ValueError, TypeError):
+                pass
+
+        # Parse evidence using existing parsers (CIViC, ClinVar, COSMIC)
+        civic_evidence = []
+        if hit.civic:
+            civic_evidence = self._parse_civic_evidence(hit.civic)
+
+        clinvar_evidence = []
+        if hit.clinvar:
+            # Convert back to dict for existing parser
+            clinvar_data = hit.clinvar
+            if isinstance(clinvar_data, list):
+                clinvar_evidence = self._parse_clinvar_evidence([c.model_dump() for c in clinvar_data])
+            else:
+                clinvar_evidence = self._parse_clinvar_evidence(clinvar_data.model_dump())
+
+        cosmic_evidence = []
+        if hit.cosmic:
+            # Convert back to dict for existing parser
+            cosmic_data = hit.cosmic
+            if isinstance(cosmic_data, list):
+                cosmic_evidence = self._parse_cosmic_evidence([c.model_dump() for c in cosmic_data])
+            else:
+                cosmic_evidence = self._parse_cosmic_evidence(cosmic_data.model_dump())
+
+        return Evidence(
+            variant_id=hit.id,
+            gene=gene,
+            variant=variant,
+            cosmic_id=cosmic_id,
+            ncbi_gene_id=ncbi_gene_id,
+            dbsnp_id=dbsnp_id,
+            clinvar_id=clinvar_id,
+            clinvar_clinical_significance=clinvar_clinical_significance,
+            clinvar_accession=clinvar_accession,
+            hgvs_genomic=hgvs_genomic,
+            hgvs_protein=hgvs_protein,
+            hgvs_transcript=hgvs_transcript,
+            snpeff_effect=snpeff_effect,
+            polyphen2_prediction=polyphen2_prediction,
+            cadd_score=cadd_score,
+            gnomad_exome_af=gnomad_exome_af,
+            transcript_id=transcript_id,
+            transcript_consequence=transcript_consequence,
+            civic=civic_evidence,
+            clinvar=clinvar_evidence,
+            cosmic=cosmic_evidence,
+            raw_data=hit.model_dump(by_alias=True),
+        )
+
     async def fetch_evidence(self, gene: str, variant: str) -> Evidence:
         """Fetch evidence for a variant from multiple sources.
 
@@ -307,8 +462,7 @@ class MyVariantClient:
             "entrezgene",  # NCBI Gene ID
             "cosmic.cosmic_id",  # COSMIC mutation ID
             "clinvar.variant_id",  # ClinVar variation ID
-            "clinvar.clinical_significance",  # ClinVar clinical significance
-            "clinvar.accession",  # ClinVar accession
+            "clinvar.rcv",  # ClinVar RCV records (contains clinical_significance and accession)
             "dbsnp.rsid",  # dbSNP rs number
             "hgvs",  # HGVS notations (genomic, protein, transcript)
             "snpeff",  # SnpEff effect prediction
@@ -337,10 +491,10 @@ class MyVariantClient:
                 query = f"{gene} {variant}"
                 result = await self._query(query, fields=fields)
 
-            # Extract hits (MyVariant returns a list of hits)
-            hits = result.get("hits", [])
+            # Parse response using Pydantic
+            parsed_response = MyVariantResponse(**result)
 
-            if not hits:
+            if not parsed_response.hits:
                 # No data found, return empty evidence
                 return Evidence(
                     variant_id=query,
@@ -364,216 +518,9 @@ class MyVariantClient:
                     raw_data=result,
                 )
 
-            # Use the first hit (most relevant)
-            hit_data = hits[0] if hits else {}
-
-            # Parse evidence from each source
-            civic_evidence = []
-            if "civic" in hit_data:
-                civic_evidence = self._parse_civic_evidence(hit_data["civic"])
-
-            clinvar_evidence = []
-            if "clinvar" in hit_data:
-                clinvar_evidence = self._parse_clinvar_evidence(hit_data["clinvar"])
-
-            cosmic_evidence = []
-            if "cosmic" in hit_data:
-                cosmic_evidence = self._parse_cosmic_evidence(hit_data["cosmic"])
-
-            # Extract database identifiers
-            cosmic_id = None
-            if "cosmic" in hit_data:
-                cosmic_data = hit_data["cosmic"]
-                if isinstance(cosmic_data, dict):
-                    cosmic_id = cosmic_data.get("cosmic_id")
-                elif isinstance(cosmic_data, list) and cosmic_data:
-                    cosmic_id = cosmic_data[0].get("cosmic_id") if isinstance(cosmic_data[0], dict) else None
-
-            ncbi_gene_id = None
-            # Try multiple places for gene ID
-            if "entrezgene" in hit_data:
-                ncbi_gene_id = str(hit_data["entrezgene"])
-            elif "dbsnp" in hit_data and isinstance(hit_data["dbsnp"], dict):
-                gene_info = hit_data["dbsnp"].get("gene")
-                if isinstance(gene_info, dict) and "geneid" in gene_info:
-                    ncbi_gene_id = str(gene_info["geneid"])
-
-            dbsnp_id = None
-            if "dbsnp" in hit_data:
-                dbsnp_data = hit_data["dbsnp"]
-                if isinstance(dbsnp_data, dict):
-                    rsid = dbsnp_data.get("rsid")
-                    if rsid:
-                        dbsnp_id = f"rs{rsid}" if not str(rsid).startswith("rs") else str(rsid)
-
-            clinvar_id = None
-            clinvar_clinical_significance = None
-            clinvar_accession = None
-            if "clinvar" in hit_data:
-                clinvar_data = hit_data["clinvar"]
-                if isinstance(clinvar_data, dict):
-                    clinvar_id = str(clinvar_data.get("variant_id")) if "variant_id" in clinvar_data else None
-                    # Extract clinical significance
-                    clin_sig = clinvar_data.get("clinical_significance")
-                    if clin_sig:
-                        if isinstance(clin_sig, list):
-                            clinvar_clinical_significance = ", ".join(str(s) for s in clin_sig)
-                        else:
-                            clinvar_clinical_significance = str(clin_sig)
-                    # Extract accession
-                    accession = clinvar_data.get("accession")
-                    if accession:
-                        clinvar_accession = str(accession)
-                elif isinstance(clinvar_data, list) and clinvar_data:
-                    if isinstance(clinvar_data[0], dict):
-                        if "variant_id" in clinvar_data[0]:
-                            clinvar_id = str(clinvar_data[0]["variant_id"])
-                        clin_sig = clinvar_data[0].get("clinical_significance")
-                        if clin_sig:
-                            if isinstance(clin_sig, list):
-                                clinvar_clinical_significance = ", ".join(str(s) for s in clin_sig)
-                            else:
-                                clinvar_clinical_significance = str(clin_sig)
-                        accession = clinvar_data[0].get("accession")
-                        if accession:
-                            clinvar_accession = str(accession)
-
-            # Extract HGVS notations
-            hgvs_genomic = None
-            hgvs_protein = None
-            hgvs_transcript = None
-
-            # The variant _id is often in HGVS genomic format (e.g., "chr7:g.140453136A>T")
-            variant_id = hit_data.get("_id", query)
-            if variant_id and (variant_id.startswith("chr") or variant_id.startswith("NC_")):
-                hgvs_genomic = variant_id
-
-            if "hgvs" in hit_data:
-                hgvs_data = hit_data["hgvs"]
-                if isinstance(hgvs_data, str):
-                    # Single HGVS notation
-                    if hgvs_data.startswith("chr") or hgvs_data.startswith("NC_"):
-                        hgvs_genomic = hgvs_data
-                    elif ":p." in hgvs_data:
-                        hgvs_protein = hgvs_data
-                    elif ":c." in hgvs_data:
-                        hgvs_transcript = hgvs_data
-                elif isinstance(hgvs_data, list):
-                    # Multiple HGVS notations
-                    for hgvs in hgvs_data:
-                        if isinstance(hgvs, str):
-                            if (hgvs.startswith("chr") or hgvs.startswith("NC_")) and not hgvs_genomic:
-                                hgvs_genomic = hgvs
-                            elif ":p." in hgvs and not hgvs_protein:
-                                hgvs_protein = hgvs
-                            elif ":c." in hgvs and not hgvs_transcript:
-                                hgvs_transcript = hgvs
-
-            # Try to extract protein notation from CIViC or other sources
-            if not hgvs_protein and "civic" in hit_data:
-                civic_data = hit_data["civic"]
-                if isinstance(civic_data, dict) and "name" in civic_data:
-                    name = civic_data["name"]
-                    if ":p." in name:
-                        hgvs_protein = name
-
-            # Extract functional annotations
-            snpeff_effect = None
-            if "snpeff" in hit_data:
-                snpeff_data = hit_data["snpeff"]
-                if isinstance(snpeff_data, dict):
-                    ann = snpeff_data.get("ann")
-                    if isinstance(ann, dict):
-                        snpeff_effect = ann.get("effect")
-                    elif isinstance(ann, list) and ann:
-                        if isinstance(ann[0], dict):
-                            snpeff_effect = ann[0].get("effect")
-
-            polyphen2_prediction = None
-            if "dbnsfp" in hit_data:
-                dbnsfp_data = hit_data["dbnsfp"]
-                if isinstance(dbnsfp_data, dict):
-                    polyphen2_data = dbnsfp_data.get("polyphen2", {})
-                    if isinstance(polyphen2_data, dict):
-                        hdiv = polyphen2_data.get("hdiv", {})
-                        if isinstance(hdiv, dict):
-                            polyphen2_prediction = hdiv.get("pred")
-
-            cadd_score = None
-            if "dbnsfp" in hit_data:
-                dbnsfp_data = hit_data["dbnsfp"]
-                if isinstance(dbnsfp_data, dict):
-                    cadd_data = dbnsfp_data.get("cadd", {})
-                    if isinstance(cadd_data, dict):
-                        phred = cadd_data.get("phred")
-                        if phred is not None:
-                            try:
-                                cadd_score = float(phred)
-                            except (ValueError, TypeError):
-                                pass
-            # Also check top-level cadd field
-            if cadd_score is None and "cadd" in hit_data:
-                cadd_data = hit_data["cadd"]
-                if isinstance(cadd_data, dict):
-                    phred = cadd_data.get("phred")
-                    if phred is not None:
-                        try:
-                            cadd_score = float(phred)
-                        except (ValueError, TypeError):
-                            pass
-
-            gnomad_exome_af = None
-            if "gnomad_exome" in hit_data:
-                gnomad_data = hit_data["gnomad_exome"]
-                if isinstance(gnomad_data, dict):
-                    af_data = gnomad_data.get("af", {})
-                    if isinstance(af_data, dict):
-                        af = af_data.get("af")
-                        if af is not None:
-                            try:
-                                gnomad_exome_af = float(af)
-                            except (ValueError, TypeError):
-                                pass
-
-            # Extract transcript information
-            transcript_id = None
-            transcript_consequence = None
-            if "snpeff" in hit_data:
-                snpeff_data = hit_data["snpeff"]
-                if isinstance(snpeff_data, dict):
-                    ann = snpeff_data.get("ann")
-                    if isinstance(ann, dict):
-                        transcript_id = ann.get("feature_id")
-                        transcript_consequence = ann.get("effect")
-                    elif isinstance(ann, list) and ann:
-                        if isinstance(ann[0], dict):
-                            transcript_id = ann[0].get("feature_id")
-                            transcript_consequence = ann[0].get("effect")
-
-            return Evidence(
-                variant_id=hit_data.get("_id", query),
-                gene=gene,
-                variant=variant,
-                cosmic_id=cosmic_id,
-                ncbi_gene_id=ncbi_gene_id,
-                dbsnp_id=dbsnp_id,
-                clinvar_id=clinvar_id,
-                clinvar_clinical_significance=clinvar_clinical_significance,
-                clinvar_accession=clinvar_accession,
-                hgvs_genomic=hgvs_genomic,
-                hgvs_protein=hgvs_protein,
-                hgvs_transcript=hgvs_transcript,
-                snpeff_effect=snpeff_effect,
-                polyphen2_prediction=polyphen2_prediction,
-                cadd_score=cadd_score,
-                gnomad_exome_af=gnomad_exome_af,
-                transcript_id=transcript_id,
-                transcript_consequence=transcript_consequence,
-                civic=civic_evidence,
-                clinvar=clinvar_evidence,
-                cosmic=cosmic_evidence,
-                raw_data=hit_data,
-            )
+            # Use the first hit (most relevant) and extract using Pydantic models
+            first_hit = parsed_response.hits[0]
+            return self._extract_from_hit(first_hit, gene, variant)
 
         except MyVariantAPIError:
             raise
