@@ -11,6 +11,7 @@ TumorBoard combines clinical evidence from multiple genomic databases (CIViC, Cl
 ### Key Features
 
 - **Evidence Aggregation**: Automatically fetches variant evidence from MyVariant.info API
+- **Database Identifiers**: Extracts COSMIC, dbSNP, ClinVar, NCBI Gene IDs, and HGVS notations
 - **LLM Assessment**: Uses LLMs to interpret evidence and assign actionability tiers
 - **Validation Framework**: Benchmarks against gold standard datasets
 - **Multiple LLM Support**: Works with OpenAI, Anthropic, and other providers via litellm
@@ -101,11 +102,15 @@ Assessing BRAF V600E in Melanoma...
 
 Variant: BRAF V600E | Tumor: Melanoma
 Tier: Tier I | Confidence: 95.0%
+Identifiers: COSMIC: COSM476 | NCBI Gene: 673 | dbSNP: rs113488022 | ClinVar: 13961
+HGVS: Genomic: chr7:g.140453136A>T
 
 BRAF V600E is a well-established actionable mutation in melanoma...
 
 Therapies: Vemurafenib, Dabrafenib
 ```
+
+**Note**: Database identifiers (COSMIC, dbSNP, ClinVar, NCBI Gene IDs, HGVS notations) are automatically extracted from MyVariant.info when available and displayed in both console output and JSON files.
 
 ### `batch` - Multiple Variants
 Specify a JSON file with variant details (gene, variant, tumor type), then run this command to process them concurrently and generate batch results.
@@ -160,6 +165,26 @@ Gold standard format: `{"entries": [{"gene": "BRAF", "variant": "V600E", "tumor_
   - Known benign polymorphisms
   - No oncogenic evidence
 
+
+## Database Identifiers
+
+TumorBoard automatically extracts and displays standardized variant identifiers when available:
+
+- **COSMIC ID**: Catalogue of Somatic Mutations in Cancer identifier (e.g., COSM476)
+- **NCBI Gene ID**: Entrez Gene identifier (e.g., 673 for BRAF)
+- **dbSNP ID**: Reference SNP identifier (e.g., rs113488022)
+- **ClinVar ID**: ClinVar variation identifier (e.g., 13961)
+- **HGVS Notations**:
+  - Genomic notation (e.g., chr7:g.140453136A>T)
+  - Protein notation (when available)
+  - Transcript notation (when available)
+
+These identifiers are included in:
+- Console output (via the assessment report)
+- JSON output files (when using `--output` flag)
+- Batch processing results
+
+**Note**: Identifier availability depends on database coverage. Not all variants have entries in all databases.
 
 ## Configuration
 

@@ -124,3 +124,57 @@ class TestMyVariantClient:
                 await client.fetch_evidence("BRAF", "V600E")
 
         await client.close()
+
+    @pytest.mark.asyncio
+    async def test_fetch_evidence_with_identifiers(self):
+        """Test fetching evidence with database identifiers."""
+        client = MyVariantClient()
+
+        mock_response = {
+            "hits": [
+                {
+                    "_id": "chr7:g.140453136A>T",
+                    "cosmic": {"cosmic_id": "COSM476"},
+                    "dbsnp": {
+                        "rsid": "rs113488022",
+                        "gene": {"geneid": 673},
+                    },
+                    "clinvar": {"variant_id": "13961"},
+                    "civic": {},
+                }
+            ]
+        }
+
+        with patch.object(client, "_query", new_callable=AsyncMock) as mock_query:
+            mock_query.return_value = mock_response
+
+            evidence = await client.fetch_evidence("BRAF", "V600E")
+
+            # Verify identifiers were extracted
+            assert evidence.cosmic_id == "COSM476"
+            assert evidence.ncbi_gene_id == "673"
+            assert evidence.dbsnp_id == "rs113488022"
+            assert evidence.clinvar_id == "13961"
+            assert evidence.hgvs_genomic == "chr7:g.140453136A>T"
+
+        await client.close()
+
+    @pytest.mark.asyncio
+    async def test_query_strategy_with_protein_notation(self):
+        """Test that the client tries protein notation query first."""
+        client = MyVariantClient()
+
+        with patch.object(client, "_query", new_callable=AsyncMock) as mock_query:
+            # First call returns results (protein notation query succeeds)
+            mock_query.return_value = {
+                "hits": [{"_id": "test", "civic": {}, "clinvar": {}, "cosmic": {}}]
+            }
+
+            await client.fetch_evidence("BRAF", "V600E")
+
+            # Verify the first query used protein notation
+            first_call_args = mock_query.call_args_list[0]
+            # Should be called with "BRAF p.V600E"
+            assert "p.V600E" in first_call_args[0][0] or "BRAF p.V600E" == first_call_args[0][0]
+
+        await client.close()
